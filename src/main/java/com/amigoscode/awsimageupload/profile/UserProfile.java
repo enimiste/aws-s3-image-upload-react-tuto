@@ -1,5 +1,7 @@
 package com.amigoscode.awsimageupload.profile;
 
+import com.amigoscode.awsimageupload.filestore.AwsS3File;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
 import java.util.Optional;
@@ -13,9 +15,14 @@ import java.util.UUID;
 public class UserProfile {
     private UUID profileId;
     private String username;
-    private String profileImageLink;//S3 key
+    @JsonIgnore
+    private AwsS3File profileImage;//S3 key
 
-    public Optional<String> getProfileImageLink() {
-        return Optional.ofNullable(profileImageLink);
+    public Optional<AwsS3File> getProfileImage() {
+        return Optional.ofNullable(profileImage);
+    }
+
+    public String getProfileImageHash(){
+        return profileImage == null ? null : (profileImage.getPath().hashCode() + "X" + profileImage.getKey().hashCode());
     }
 }

@@ -1,6 +1,7 @@
 package com.amigoscode.awsimageupload.profile;
 
 import com.amigoscode.awsimageupload.bucket.BucketName;
+import com.amigoscode.awsimageupload.filestore.AwsS3File;
 import com.amigoscode.awsimageupload.filestore.FileStore;
 import com.amigoscode.awsimageupload.filestore.FileStore.FileMetadata;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class UserProfileService {
     }
 
     @SneakyThrows(IOException.class)
-    public void uploadUserProfileImage(UUID userProfileId, MultipartFile image) {
+    public String uploadUserProfileImage(UUID userProfileId, MultipartFile image) {
         Objects.requireNonNull(userProfileId, "userProfileId should'nt be null");
         Objects.requireNonNull(userProfileId, "Profile image should'nt be null");
 
@@ -51,11 +52,21 @@ public class UserProfileService {
                 .meta("Content-Length", image.getSize());
 
         //5. store the image on S3 bucket and update the userProfileImageLink with S3 link
+        String key = String.format("%s-%s", image.getOriginalFilename(), UUID.randomUUID());
         String path = fileStore.save(BucketName.PROFILE_IMAGE,
                 userProfileId.toString(),
-                String.format("%s-%s", image.getOriginalFilename(), UUID.randomUUID()),
+                key,
                 meta, image.getInputStream());
 
-        dao.updateProfileImageLink(userProfileId, path);
+        userProfile.setProfileImage(new AwsS3File(path, key));
+        dao.updateProfileImageLink(userProfileId, path, key);
+        return userProfile.getProfileImageHash();
+    }
+
+    public byte[] downloadProfileImage(UUID userProfileId) {
+        return dao.getUserProfileById(userProfileId)
+                .flatMap(UserProfile::getProfileImage)
+                .map(img -> fileStore.download(img.getPath(), img.getKey()))
+                .orElse(new byte[0]);
     }
 }

@@ -2,6 +2,7 @@ package com.amigoscode.awsimageupload.profile;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,10 +27,18 @@ public class UserProfileController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public void uploadUserProfileImage(
+    public ResponseEntity<String> uploadUserProfileImage(
             @PathVariable("userProfileId") UUID userProfileId,
             @RequestParam("userProfileImage") MultipartFile image
     ) {
-        service.uploadUserProfileImage(userProfileId, image);
+        String hash = service.uploadUserProfileImage(userProfileId, image);
+        return ResponseEntity.ok(hash);
+    }
+
+    @GetMapping("{userProfileId}/image/download")
+    public byte[] downloadUserProfileImage(
+            @PathVariable("userProfileId") UUID userProfileId
+    ){
+        return service.downloadProfileImage(userProfileId);
     }
 }

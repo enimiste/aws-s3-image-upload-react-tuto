@@ -1,6 +1,7 @@
 package com.amigoscode.awsimageupload.profile;
 
 import com.amigoscode.awsimageupload.datastore.UserProfileDatastore;
+import com.amigoscode.awsimageupload.filestore.AwsS3File;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -21,9 +22,9 @@ public class UserProfileDAO {
         return datastore.findUserProfileById(userProfileId);
     }
 
-    public void updateProfileImageLink(UUID userProfileId, String path) {
+    public void updateProfileImageLink(UUID userProfileId, String path, String key) {
         datastore.findUserProfileById(userProfileId)
-                .ifPresent(u -> u.setProfileImageLink(path));
+                .ifPresent(u -> u.setProfileImage(new AwsS3File(path, key)));
         datastore.flush();
     }
 }

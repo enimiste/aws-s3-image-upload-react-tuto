@@ -1,5 +1,6 @@
 package com.amigoscode.awsimageupload.datastore;
 
+import com.amigoscode.awsimageupload.filestore.AwsS3File;
 import com.amigoscode.awsimageupload.profile.UserProfile;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Repository;
@@ -12,8 +13,11 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.nio.file.StandardOpenOption.*;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.util.Optional.ofNullable;
 import static java.util.UUID.fromString;
+import static java.util.function.Predicate.not;
 
 @Repository
 public class FakeUserProfileDatastore implements UserProfileDatastore {
@@ -32,12 +36,25 @@ public class FakeUserProfileDatastore implements UserProfileDatastore {
             userProfiles.addAll(lines.stream()
                     .map(line -> {
                         String[] parts = line.split(";");
-                        return new UserProfile(UUID.fromString(parts[0]),
-                                parts[1],
-                                Optional.ofNullable(parts[2])
+                        if (parts.length < 2)
+                            throw new IllegalStateException("Invalid datastore in : " + path);
+                        AwsS3File profileImage = null;
+                        if (parts.length >= 4) {
+                            Optional<String> pathOpt = ofNullable(parts[2])
+                                    .map(String::trim)
+                                    .filter(not(String::isBlank));
+                            profileImage = pathOpt.flatMap(pth -> {
+                                Optional<String> keyOpt = ofNullable(parts[3])
                                         .map(String::trim)
-                                        .filter(String::isBlank)
-                                        .orElse(null));
+                                        .filter(not(String::isBlank));
+                                return keyOpt.map(key -> Map.entry(pth, key));
+                            })
+                                    .map(e -> new AwsS3File(e.getKey(), e.getValue()))
+                                    .orElse(null);
+                        }
+                        return new UserProfile(fromString(parts[0]),
+                                parts[1].trim(),
+                                profileImage);
                     }).collect(Collectors.toList()));
         } else {
             userProfiles.add(new UserProfile(fromString("25e13d3c-c746-4de3-b9f7-ce27d7778daa"), "e.nouni", null));
@@ -56,8 +73,14 @@ public class FakeUserProfileDatastore implements UserProfileDatastore {
                     sb.append(up.getProfileId());
                     sb.append("; ");
                     sb.append(up.getUsername());
-                    sb.append("; ");
-                    sb.append(up.getProfileImageLink().orElse(""));
+                    up.getProfileImage()
+                            .ifPresent(pi -> {
+                                sb.append("; ");
+                                sb.append(pi.getPath());
+                                sb.append("; ");
+                                sb.append(pi.getKey());
+                            });
+
                     return sb.toString();
                 }).collect(Collectors.toList());
         Files.write(path, lines, TRUNCATE_EXISTING, CREATE);

@@ -3,8 +3,10 @@ package com.amigoscode.awsimageupload.filestore;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.util.IOUtils;
 import com.amigoscode.awsimageupload.bucket.BucketName;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -23,7 +25,7 @@ public class FileStore {
      * @param fileName
      * @param userMetadata optional
      * @param content
-     * @return the file path
+     * @return the file base path
      */
     public String save(BucketName bucket,
                        String folderPath,
@@ -34,10 +36,16 @@ public class FileStore {
         String path = String.format("%s/%s", bucket.getBucketName(), folderPath);
         try {
             s3.putObject(path, fileName, content, metadata);
-            return String.format("%s/%s", path, fileName);
+            return path;
         } catch (AmazonServiceException e) {
             throw new IllegalStateException("Failed to upload file \"" + fileName + "\" to S3", e);
         }
+    }
+
+    @SneakyThrows
+    public byte[] download(String path, String key) {
+        return IOUtils.toByteArray(s3.getObject(path, key)
+                .getObjectContent());
     }
 
     public interface FileMetadata extends Map<String, String> {

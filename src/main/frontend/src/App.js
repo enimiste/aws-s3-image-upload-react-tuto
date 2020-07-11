@@ -18,18 +18,23 @@ const UserProfiles = () => {
   }, []);
   return userProfiles.map((userProfile, index) => {
     return (
-      <div key={index}>
+      <div  className="userprofile" key={index}>
+        <UserProfileImage userProfileId={userProfile.profileId} 
+                        userProfileImageHash={userProfile.profileImageHash} />        
         <br />
         <br />
         <h1>{userProfile.username}</h1>
-        <p>{userProfile.profileId}</p>
-        <a href={userProfile.profileImageLink}>Image</a>
+        <p>{userProfile.profileImageHash}</p>
         <MyDropzone userProfileId={userProfile.profileId} />
         <br />
       </div>
     );
   });
 };
+
+function UserProfileImage({userProfileId, userProfileImageHash}){
+  return (userProfileId ? <img src={`http://localhost:8080/api/v1/user-profile/${userProfileId}/image/download?hash=${userProfileImageHash}`} alt="User profile"/> : null);
+}
 
 function MyDropzone({ userProfileId }) {
   const onDrop = useCallback(acceptedFiles => {
@@ -48,8 +53,9 @@ function MyDropzone({ userProfileId }) {
           }
         }
       )
-      .then(() => {
-        console.log("Profile image uploaded");
+      .then((res) => {
+        let hash = res.data;
+        console.dir(hash);
       })
       .catch(err => {
         console.error(err);
